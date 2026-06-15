@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ware — SKU Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-left">
+    <img src="/static/images/logo.png" class="nav-logo" alt="ware" />
+    <span class="nav-tag">SKU Studio</span>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#" class="active" data-section="generator">Generator</a></li>
+    <li><a href="#" data-section="archive">Archive</a></li>
+    <li><a href="#" data-section="zoho">Zoho Sync</a></li>
+    <li><a href="#" data-section="settings">Settings</a></li>
+  </ul>
+</nav>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header" data-group="create">
+        <span>Create</span>
+        <svg class="chevron" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+      </div>
+      <div class="sidebar-group-items" id="group-create">
+        <div class="sidebar-item active" data-page="individual">
+          <div class="sidebar-dot"></div>Individual SKU
+        </div>
+        <div class="sidebar-item" data-page="assembly">
+          <div class="sidebar-dot"></div>Assembly SKU
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header" data-group="manage">
+        <span>Manage</span>
+        <svg class="chevron" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+      </div>
+      <div class="sidebar-group-items" id="group-manage">
+        <div class="sidebar-item" data-page="archive-ind">
+          <div class="sidebar-dot"></div>SKU Archive
+        </div>
+        <div class="sidebar-item" data-page="archive-asm">
+          <div class="sidebar-dot"></div>Assembly Archive
+        </div>
+        <div class="sidebar-item" data-page="components">
+          <div class="sidebar-dot"></div>Component Library
+        </div>
+        <div class="sidebar-item" data-page="options">
+          <div class="sidebar-dot"></div>Customise SKU Codes
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header" data-group="zoho-grp">
+        <span>Zoho</span>
+        <svg class="chevron" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+      </div>
+      <div class="sidebar-group-items" id="group-zoho-grp">
+        <div class="sidebar-item" data-page="zoho-status">
+          <div class="sidebar-dot"></div>Sync Status
+        </div>
+        <div class="sidebar-item" data-page="zoho-setup">
+          <div class="sidebar-dot"></div>Setup & Credentials
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-group">
+      <div class="sidebar-group-header" data-group="export">
+        <span>Export</span>
+        <svg class="chevron" width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linecap="round"/></svg>
+      </div>
+      <div class="sidebar-group-items" id="group-export">
+        <div class="sidebar-item" data-page="export-csv">
+          <div class="sidebar-dot"></div>Download CSV
+        </div>
+        <div class="sidebar-item" data-page="bulk-import">
+          <div class="sidebar-dot"></div>Bulk Import
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="main" id="main-content">
+
+    <!-- ── INDIVIDUAL SKU PAGE ── -->
+    <div class="page active" id="page-individual">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Individual SKU Generator</h1>
+          <p class="page-sub">Build a new product code using the ware naming system</p>
+          <div class="accent-rule"></div>
+        </div>
+        <div class="sync-badge" id="sync-badge">
+          <span class="sync-dot"></span><span id="sync-label">Checking Zoho...</span>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="stats-row" id="stats-row">
+        <div class="stat-card accent-t">
+          <div class="stat-val" id="stat-total">—</div>
+          <div class="stat-label">Total SKUs</div>
+        </div>
+        <div class="stat-card accent-o">
+          <div class="stat-val" id="stat-asm">—</div>
+          <div class="stat-label">Assemblies</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-synced">—</div>
+          <div class="stat-label">Synced today</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-pending">—</div>
+          <div class="stat-label">Pending sync</div>
+        </div>
+      </div>
+
+      <!-- SKU LIVE PREVIEW BAND -->
+      <div class="sku-band">
+        <div class="sku-segments" id="ind-preview">
+          <div class="sku-seg"><div class="sku-val ter" id="prev-mat">CER</div><div class="sku-tag">Material</div></div>
+          <div class="sku-sep">—</div>
+          <div class="sku-seg"><div class="sku-val whi" id="prev-typ">AE</div><div class="sku-tag">Typology</div></div>
+          <div class="sku-sep">—</div>
+          <div class="sku-seg"><div class="sku-val dim" id="prev-num">001</div><div class="sku-tag">Number</div></div>
+        </div>
+        <div class="sku-right">
+          <div class="sku-full" id="ind-sku-full">CERAE001</div>
+          <button class="btn btn-sm btn-ghost-light" onclick="copyToClipboard('ind-sku-full')">Copy</button>
+        </div>
+      </div>
+
+      <!-- FORM CARD -->
+      <div class="card">
+        <div class="card-title">SKU Segments</div>
+        <div class="form-grid-3">
+
+          <div class="field">
+            <label class="field-label">Material</label>
+            <select id="ind-mat" onchange="updateIndPreview()"></select>
+            <div class="add-inline" id="add-material">
+              <span class="add-inline-label">+ New</span>
+              <input type="text" class="add-code" placeholder="MAT" maxlength="4" id="new-material-code" />
+              <input type="text" class="add-name" placeholder="Name" id="new-material-name" />
+              <button class="btn-add-inline" onclick="addOption('material','ind-mat')">Add</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Typology</label>
+            <select id="ind-typ" onchange="onTypologyChange()"></select>
+            <div class="add-inline" id="add-typology">
+              <span class="add-inline-label">+ New</span>
+              <input type="text" class="add-code" placeholder="AB" maxlength="3" id="new-typology-code" />
+              <input type="text" class="add-name" placeholder="Name" id="new-typology-name" />
+              <button class="btn-add-inline" onclick="addOption('typology','ind-typ')">Add</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Product Number <span style="font-weight:400;color:var(--grey);font-size:11px">— auto-assigned by typology</span></label>
+            <input type="number" id="ind-num" value="1" min="1" max="999" readonly style="background:var(--cream,#f6f3ee);cursor:not-allowed" />
+          </div>
+
+        </div>
+
+        <div class="form-grid-2" style="margin-top:16px">
+          <div class="field">
+            <label class="field-label">Product Name</label>
+            <input type="text" id="ind-name" placeholder="e.g. Eclipse 300ml Pasta Bowl" />
+          </div>
+          <div class="field">
+            <label class="field-label">Notes (optional)</label>
+            <input type="text" id="ind-notes" placeholder="e.g. handmade, limited run..." />
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveSKU(false)">Save SKU</button>
+        <button class="btn btn-olive" onclick="saveSKU(true)">Save & Push to Zoho</button>
+        <button class="btn btn-ghost" onclick="clearIndForm()">Clear</button>
+      </div>
+
+      <div class="toast" id="ind-toast"></div>
+    </div>
+
+    <!-- ── ASSEMBLY SKU PAGE ── -->
+    <div class="page" id="page-assembly">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Assembly SKU Generator</h1>
+          <p class="page-sub">Build a composite product code and define its bill of materials</p>
+          <div class="accent-rule"></div>
+        </div>
+      </div>
+
+      <div class="sku-band">
+        <div class="sku-segments">
+          <div class="sku-seg"><div class="sku-val ter" id="prev-cat">LMP</div><div class="sku-tag">Category</div></div>
+          <div class="sku-sep">-</div>
+          <div class="sku-seg"><div class="sku-val whi" id="prev-des">ECL</div><div class="sku-tag">Design</div></div>
+          <div class="sku-sep">-</div>
+          <div class="sku-seg"><div class="sku-val dim" id="prev-seq">001</div><div class="sku-tag">Seq</div></div>
+        </div>
+        <div class="sku-right">
+          <div class="sku-full" id="asm-sku-full">LMP-ECL-001</div>
+          <button class="btn btn-sm btn-ghost-light" onclick="copyToClipboard('asm-sku-full')">Copy</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Assembly Segments</div>
+        <div class="form-grid-3">
+
+          <div class="field">
+            <label class="field-label">Category</label>
+            <select id="asm-cat" onchange="updateAsmPreview()"></select>
+            <div class="add-inline">
+              <span class="add-inline-label">+ New</span>
+              <input type="text" class="add-code" placeholder="CAT" maxlength="4" id="new-category-code" />
+              <input type="text" class="add-name" placeholder="Name" id="new-category-name" />
+              <button class="btn-add-inline" onclick="addOption('category','asm-cat')">Add</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Design / Collection</label>
+            <select id="asm-des" onchange="updateAsmPreview()"></select>
+            <div class="add-inline">
+              <span class="add-inline-label">+ New</span>
+              <input type="text" class="add-code" placeholder="ECL" maxlength="4" id="new-design-code" />
+              <input type="text" class="add-name" placeholder="Name" id="new-design-name" />
+              <button class="btn-add-inline" onclick="addOption('design','asm-des')">Add</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label">Sequence #</label>
+            <input type="number" id="asm-seq" value="1" min="1" max="999" oninput="updateAsmPreview()" />
+          </div>
+
+        </div>
+        <div class="form-grid-2" style="margin-top:16px">
+          <div class="field">
+            <label class="field-label">Product Name</label>
+            <input type="text" id="asm-name" placeholder="e.g. Eclipse Wall Lamp Warm Brown" />
+          </div>
+          <div class="field">
+            <label class="field-label">Notes (optional)</label>
+            <input type="text" id="asm-notes" placeholder="" />
+          </div>
+        </div>
+      </div>
+
+      <!-- BOM -->
+      <div class="card">
+        <div class="card-title">Bill of Materials <span style="font-weight:400;color:var(--grey);font-size:11px">— optional; you can leave this empty and link components in Zoho</span></div>
+        <div id="bom-list"><div class="empty-state">No components added — assembly will push as an empty composite shell</div></div>
+        <div class="bom-add-row" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <div class="form-grid-bom">
+            <div class="field">
+              <label class="field-label">Individual SKU</label>
+              <input type="text" id="bom-sku" placeholder="3DP011EC001" style="font-family:monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" />
+            </div>
+            <div class="field">
+              <label class="field-label">Description</label>
+              <input type="text" id="bom-desc" placeholder="Eclipse wall lamp light module" />
+            </div>
+            <div class="field" style="max-width:90px">
+              <label class="field-label">Qty</label>
+              <input type="number" id="bom-qty" value="1" min="0.01" step="0.01" />
+            </div>
+            <div class="field" style="max-width:110px">
+              <label class="field-label">Unit</label>
+              <select id="bom-unit">
+                <option value="unit">Unit</option>
+                <option value="reel">Reel / Roll</option>
+                <option value="metre">Metre</option>
+              </select>
+            </div>
+            <div class="field" style="max-width:100px" id="reel-size-field">
+              <label class="field-label">Reel size (m)</label>
+              <input type="number" id="bom-reel" value="5" min="1" />
+            </div>
+            <div class="field" style="justify-content:flex-end;padding-top:22px">
+              <button class="btn btn-primary" onclick="addBOMItem()">Add</button>
+            </div>
+          </div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span class="field-label">Pick from your SKUs:</span>
+            <select id="sku-pick" style="height:32px;font-size:11px;min-width:240px" onchange="pickFromSKUs()">
+              <option value="">— select an individual SKU —</option>
+            </select>
+          </div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+            <span class="field-label" style="color:var(--grey)">Or from library:</span>
+            <select id="lib-pick" style="height:32px;font-size:11px;width:auto" onchange="pickFromLib()">
+              <option value="">— select —</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveAssembly(false)">Save Assembly</button>
+        <button class="btn btn-olive" onclick="saveAssembly(true)">Save & Push to Zoho</button>
+        <button class="btn btn-ghost" onclick="clearAsmForm()">Clear</button>
+      </div>
+      <div class="toast" id="asm-toast"></div>
+    </div>
+
+    <!-- ── SKU ARCHIVE PAGE ── -->
+    <div class="page" id="page-archive-ind">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">SKU Archive</h1>
+          <p class="page-sub">All individual product codes</p>
+          <div class="accent-rule"></div>
+        </div>
+        <input type="text" class="search-input" placeholder="Search SKU or product name..." id="search-ind" oninput="loadSKUs()" />
+      </div>
+      <div class="card" style="padding:0">
+        <table class="archive-table" id="skus-table">
+          <thead>
+            <tr>
+              <th>SKU Code</th>
+              <th>Product Name</th>
+              <th>Material</th>
+              <th>Typology</th>
+              <th>Zoho</th>
+              <th>Date</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="skus-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── ASSEMBLY ARCHIVE PAGE ── -->
+    <div class="page" id="page-archive-asm">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Assembly Archive</h1>
+          <p class="page-sub">All composite product codes and their BOMs</p>
+          <div class="accent-rule"></div>
+        </div>
+        <input type="text" class="search-input" placeholder="Search assembly SKU..." id="search-asm" oninput="loadAssemblies()" />
+      </div>
+      <div id="assemblies-list"></div>
+    </div>
+
+    <!-- ── COMPONENT LIBRARY PAGE ── -->
+    <div class="page" id="page-components">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Component Library</h1>
+          <p class="page-sub">Individual SKUs available for assembly BOMs</p>
+          <div class="accent-rule"></div>
+        </div>
+      </div>
+      <div class="card" style="padding:0">
+        <table class="archive-table">
+          <thead>
+            <tr><th>SKU</th><th>Description</th><th>Category</th><th>Unit type</th><th>Reel size</th><th></th></tr>
+          </thead>
+          <tbody id="components-tbody"></tbody>
+        </table>
+      </div>
+      <div class="card" style="margin-top:18px">
+        <div class="card-title">Add Component</div>
+        <div class="form-grid-4">
+          <div class="field">
+            <label class="field-label">SKU</label>
+            <input type="text" id="comp-sku" placeholder="3DP011EC001" style="font-family:monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()" />
+          </div>
+          <div class="field">
+            <label class="field-label">Description</label>
+            <input type="text" id="comp-desc" placeholder="Eclipse wall lamp light module" />
+          </div>
+          <div class="field">
+            <label class="field-label">Category</label>
+            <select id="comp-cat">
+              <option value="lighting">Lighting</option>
+              <option value="hardware">Hardware</option>
+              <option value="ceramic">Ceramic</option>
+              <option value="electronics">Electronics</option>
+              <option value="profile">Profile</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field-label">Unit type</label>
+            <select id="comp-unit" onchange="toggleReelSize()">
+              <option value="unit">Unit (whole)</option>
+              <option value="reel">Reel / Roll (continuous)</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="max-width:180px;margin-top:12px" id="comp-reel-field" style="display:none">
+          <label class="field-label">Reel size (metres)</label>
+          <input type="number" id="comp-reel" value="5" min="1" />
+        </div>
+        <div class="actions" style="margin-top:16px">
+          <button class="btn btn-primary" onclick="addComponent()">Add to Library</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── OPTIONS PAGE ── -->
+    <div class="page" id="page-options">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Customise SKU Codes</h1>
+          <p class="page-sub">Add or remove the values that appear in your SKU dropdowns</p>
+          <div class="accent-rule"></div>
+        </div>
+      </div>
+      <div class="options-grid">
+        <div class="card" id="opts-material-card">
+          <div class="card-title">Materials</div>
+          <div id="opts-material"></div>
+          <div class="add-inline" style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">
+            <span class="add-inline-label">+ New</span>
+            <input type="text" class="add-code" placeholder="MAT" maxlength="4" id="opts-new-material-code" />
+            <input type="text" class="add-name" placeholder="Name" id="opts-new-material-name" />
+            <button class="btn-add-inline" onclick="addOptionFromOpts('material')">Add</button>
+          </div>
+        </div>
+        <div class="card" id="opts-color-card">
+          <div class="card-title">Colors</div>
+          <div id="opts-color"></div>
+          <div class="add-inline" style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">
+            <span class="add-inline-label">+ New</span>
+            <input type="text" class="add-code" placeholder="000" maxlength="3" id="opts-new-color-code" />
+            <input type="text" class="add-name" placeholder="Name" id="opts-new-color-name" />
+            <button class="btn-add-inline" onclick="addOptionFromOpts('color')">Add</button>
+          </div>
+        </div>
+        <div class="card" id="opts-typology-card">
+          <div class="card-title">Typologies</div>
+          <div id="opts-typology"></div>
+          <div class="add-inline" style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">
+            <span class="add-inline-label">+ New</span>
+            <input type="text" class="add-code" placeholder="AB" maxlength="3" id="opts-new-typology-code" />
+            <input type="text" class="add-name" placeholder="Name" id="opts-new-typology-name" />
+            <button class="btn-add-inline" onclick="addOptionFromOpts('typology')">Add</button>
+          </div>
+        </div>
+        <div class="card" id="opts-category-card">
+          <div class="card-title">Categories (Assembly)</div>
+          <div id="opts-category"></div>
+          <div class="add-inline" style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">
+            <span class="add-inline-label">+ New</span>
+            <input type="text" class="add-code" placeholder="LMP" maxlength="4" id="opts-new-category-code" />
+            <input type="text" class="add-name" placeholder="Name" id="opts-new-category-name" />
+            <button class="btn-add-inline" onclick="addOptionFromOpts('category')">Add</button>
+          </div>
+        </div>
+        <div class="card" id="opts-variant-card">
+          <div class="card-title">Variants / Finishes</div>
+          <div id="opts-variant"></div>
+          <div class="add-inline" style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">
+            <span class="add-inline-label">+ New</span>
+            <input type="text" class="add-code" placeholder="001" maxlength="3" id="opts-new-variant-code" />
+            <input type="text" class="add-name" placeholder="Name" id="opts-new-variant-name" />
+            <button class="btn-add-inline" onclick="addOptionFromOpts('variant')">Add</button>
+          </div>
+        </div>
+        <div class="card" id="opts-design-card">
+          <div class="card-title">Designs / Collections</div>
+          <div id="opts-design"></div>
+          <div class="add-inline" style="margin-top:12px;padding-top:12px;border-top:1px dashed var(--border)">
+            <span class="add-inline-label">+ New</span>
+            <input type="text" class="add-code" placeholder="ECL" maxlength="4" id="opts-new-design-code" />
+            <input type="text" class="add-name" placeholder="Name" id="opts-new-design-name" />
+            <button class="btn-add-inline" onclick="addOptionFromOpts('design')">Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ZOHO SETUP PAGE ── -->
+    <div class="page" id="page-zoho-setup">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Zoho Setup</h1>
+          <p class="page-sub">Connect ware SKU Studio to your Zoho Inventory account</p>
+          <div class="accent-rule"></div>
+        </div>
+      </div>
+      <div class="card" style="max-width:560px">
+        <div class="card-title">API Credentials</div>
+        <div class="field" style="margin-bottom:14px">
+          <label class="field-label">Client ID</label>
+          <input type="text" id="cfg-client-id" placeholder="1000.XXXXXXXX" />
+        </div>
+        <div class="field" style="margin-bottom:14px">
+          <label class="field-label">Client Secret</label>
+          <input type="password" id="cfg-client-secret" placeholder="••••••••••••••••" />
+        </div>
+        <div class="field" style="margin-bottom:14px">
+          <label class="field-label">Organisation ID</label>
+          <input type="text" id="cfg-org-id" placeholder="Your Zoho Inventory Org ID" />
+        </div>
+        <div class="field" style="margin-bottom:20px">
+          <label class="field-label">Grant Code (from Zoho API Console)</label>
+          <input type="text" id="cfg-code" placeholder="Paste the code you generated earlier" />
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" onclick="saveZohoConfig()">Save Credentials</button>
+          <button class="btn btn-olive" onclick="testZoho()">Test Connection</button>
+        </div>
+        <div class="toast" id="zoho-toast" style="margin-top:12px"></div>
+      </div>
+    </div>
+
+    <!-- ── ZOHO STATUS PAGE ── -->
+    <div class="page" id="page-zoho-status">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Sync Status</h1>
+          <p class="page-sub">Overview of SKUs synced with Zoho Inventory</p>
+          <div class="accent-rule"></div>
+        </div>
+      </div>
+      <div class="card" style="max-width:480px">
+        <div class="card-title">Connection</div>
+        <div id="zoho-status-display" style="font-size:14px;color:var(--grey);padding:8px 0">Checking...</div>
+      </div>
+    </div>
+
+    <!-- ── EXPORT PAGE ── -->
+    <div class="page" id="page-export-csv">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Export</h1>
+          <p class="page-sub">Download your SKU data as CSV</p>
+          <div class="accent-rule"></div>
+        </div>
+      </div>
+      <div class="card" style="max-width:480px">
+        <div class="card-title">Download</div>
+        <p style="font-size:13px;color:var(--grey);margin-bottom:20px;line-height:1.7">Export all individual SKUs to a CSV file. You can open this in Excel or use it to import into other systems.</p>
+        <div class="actions">
+          <a href="/api/export/skus" class="btn btn-primary" style="text-decoration:none;display:inline-flex;align-items:center">Download SKU Archive CSV</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BULK IMPORT PAGE ── -->
+    <div class="page" id="page-bulk-import">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Bulk Import</h1>
+          <p class="page-sub">Import your existing SKUs from a CSV file</p>
+          <div class="accent-rule"></div>
+        </div>
+      </div>
+      <div class="card" style="max-width:560px">
+        <div class="card-title">Coming Soon</div>
+        <p style="font-size:13px;color:var(--grey);line-height:1.7">Bulk import will be enabled once your existing ~500 SKUs are ready to migrate. The CSV format will match the export format above.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

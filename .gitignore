@@ -1,0 +1,18 @@
+# Local data — never commit real credentials or the live database
+data/config.json
+data/ware.db
+data/*_backup_*.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
