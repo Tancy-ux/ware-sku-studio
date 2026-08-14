@@ -1,6 +1,7 @@
-# Local data — never commit real credentials or the live database
+# Local data — never commit real credentials
+# NOTE: data/ware.db IS committed on purpose — Render has no persistent disk,
+# so the live deploy reads its starting data from this file in the repo.
 data/config.json
-data/ware.db
 data/*_backup_*.db
 
 # Python
