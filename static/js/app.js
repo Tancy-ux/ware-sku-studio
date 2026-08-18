@@ -92,6 +92,7 @@ async function loadAllOptions() {
   await loadOptions('category', 'asm-cat');
   await loadOptions('design', 'asm-des');
   await refreshNextNumber();
+  await refreshNextAssemblyNumber();
   updateIndPreview();
   updateAsmPreview();
 }
@@ -224,6 +225,27 @@ function updateAsmPreview() {
   // Variant/colour is not part of the assembly SKU. Identity = Category + Design + Seq.
   const sku = `${cat.code}-${des.code}-${seq}`;
   setText('asm-sku-full', sku);
+}
+
+// When category changes, ask the server for the next sequence number in that category.
+async function onCategoryChange() {
+  await refreshNextAssemblyNumber();
+  updateAsmPreview();
+}
+
+// Fetch + display the auto-assigned sequence number for the currently selected category.
+async function refreshNextAssemblyNumber() {
+  const cat = getSelectedText('asm-cat');
+  const seqField = document.getElementById('asm-seq');
+  if (!cat.code) { if (seqField) seqField.value = 1; return; }
+  try {
+    const res = await fetch('/api/next-assembly-number?category_code=' + encodeURIComponent(cat.code));
+    const data = await res.json();
+    if (seqField) seqField.value = data.next_number || 1;
+  } catch {
+    if (seqField) seqField.value = 1;
+  }
+  updateAsmPreview();
 }
 
 function setText(id, val) {
@@ -453,6 +475,8 @@ async function saveAssembly(pushToZoho) {
     showToast('asm-toast', msg, 'success');
     bom = [];
     renderBOM();
+    // Pull the next number in this category so it climbs automatically.
+    await refreshNextAssemblyNumber();
     loadStats();
   } else {
     showToast('asm-toast', data.error || 'Error saving assembly', 'error');
@@ -462,10 +486,9 @@ async function saveAssembly(pushToZoho) {
 function clearAsmForm() {
   bom = [];
   renderBOM();
-  document.getElementById('asm-seq').value = 1;
   document.getElementById('asm-name').value = '';
   document.getElementById('asm-notes').value = '';
-  updateAsmPreview();
+  refreshNextAssemblyNumber();
 }
 
 // ── LOAD SKU ARCHIVE ──────────────────────────────────────────────────────────

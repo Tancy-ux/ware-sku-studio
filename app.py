@@ -45,6 +45,11 @@ def init_db():
         last_number INTEGER NOT NULL DEFAULT 0
     )''')
 
+    c.execute('''CREATE TABLE IF NOT EXISTS category_counters (
+        category_code TEXT PRIMARY KEY,
+        last_number INTEGER NOT NULL DEFAULT 0
+    )''')
+
     c.execute('''CREATE TABLE IF NOT EXISTS assembly_skus (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         sku_code TEXT UNIQUE NOT NULL,
@@ -297,6 +302,54 @@ def get_next_number():
     return jsonify({'next_number': n})
 
 
+def _highest_existing_assembly(conn, category_code):
+    """Highest sequence number currently present among live assemblies of this category (fallback seed)."""
+    rows = conn.execute('SELECT seq_number FROM assembly_skus WHERE category_code=?', (category_code,)).fetchall()
+    mx = 0
+    for r in rows:
+        try:
+            v = int(r['seq_number'])
+        except (TypeError, ValueError):
+            v = 0
+        if v > mx:
+            mx = v
+    return mx
+
+def _counter_value_assembly(conn, category_code):
+    """Current high-water mark for a category, seeding from live assemblies if the counter doesn't exist yet."""
+    row = conn.execute('SELECT last_number FROM category_counters WHERE category_code=?', (category_code,)).fetchone()
+    if row is not None:
+        counter = int(row['last_number'])
+    else:
+        counter = 0
+    existing = _highest_existing_assembly(conn, category_code)
+    return max(counter, existing)
+
+def next_number_for_category(conn, category_code):
+    """PEEK: what number the next assembly in this category will get. Does not consume it."""
+    return _counter_value_assembly(conn, category_code) + 1
+
+def claim_number_for_category(conn, category_code):
+    """CLAIM: reserve and return the next number, permanently advancing the counter so it is never reused."""
+    n = _counter_value_assembly(conn, category_code) + 1
+    conn.execute('''INSERT INTO category_counters (category_code, last_number) VALUES (?, ?)
+                    ON CONFLICT(category_code) DO UPDATE SET last_number=excluded.last_number''',
+                 (category_code, n))
+    return n
+
+
+@app.route('/api/next-assembly-number')
+def get_next_assembly_number():
+    """Front-end calls this when a category is selected to show the auto-assigned sequence number."""
+    cat = request.args.get('category_code', '')
+    if not cat:
+        return jsonify({'next_number': 1})
+    conn = get_db()
+    n = next_number_for_category(conn, cat)
+    conn.close()
+    return jsonify({'next_number': n})
+
+
 @app.route('/api/skus', methods=['POST'])
 def save_sku():
     data = request.json
@@ -383,10 +436,14 @@ def get_assemblies():
 @app.route('/api/assemblies', methods=['POST'])
 def save_assembly():
     data = request.json
+    conn = get_db()
+    # Sequence number is assigned automatically by the server, scoped to category, always climbing.
+    # claim_number permanently advances the per-category counter so deleted numbers are never reused.
+    number = claim_number_for_category(conn, data['category_code'])
+    seq_number = str(number).zfill(3)
     # Variant/colour is intentionally NOT part of the assembly SKU identity.
     # Assembly SKU = CATEGORY - DESIGN - SEQ. Colour is decided per order, not baked into the code.
-    sku_code = f"{data['category_code']}-{data['design_code']}-{str(data['seq_number']).zfill(3)}"
-    conn = get_db()
+    sku_code = f"{data['category_code']}-{data['design_code']}-{seq_number}"
     try:
         conn.execute('''INSERT INTO assembly_skus
             (sku_code, product_name, category_code, category_name, variant_code, variant_name,
@@ -394,7 +451,7 @@ def save_assembly():
             VALUES (?,?,?,?,?,?,?,?,?,?,?)''',
             (sku_code, data.get('product_name',''), data['category_code'], data.get('category_name',''),
              data.get('variant_code',''), data.get('variant_name',''), data['design_code'],
-             data.get('design_name',''), str(data['seq_number']).zfill(3),
+             data.get('design_name',''), seq_number,
              json.dumps(data.get('bom',[])), data.get('notes','')))
         conn.commit()
         asm_id = conn.execute('SELECT id FROM assembly_skus WHERE sku_code=?', (sku_code,)).fetchone()['id']

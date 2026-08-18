@@ -233,7 +233,7 @@
 
           <div class="field">
             <label class="field-label">Category</label>
-            <select id="asm-cat" onchange="updateAsmPreview()"></select>
+            <select id="asm-cat" onchange="onCategoryChange()"></select>
             <div class="add-inline">
               <span class="add-inline-label">+ New</span>
               <input type="text" class="add-code" placeholder="CAT" maxlength="4" id="new-category-code" />
@@ -254,8 +254,8 @@
           </div>
 
           <div class="field">
-            <label class="field-label">Sequence #</label>
-            <input type="number" id="asm-seq" value="1" min="1" max="999" oninput="updateAsmPreview()" />
+            <label class="field-label">Sequence # <span style="font-weight:400;color:var(--grey);font-size:11px">— auto-assigned by category</span></label>
+            <input type="number" id="asm-seq" value="1" min="1" max="999" readonly style="background:var(--cream,#f6f3ee);cursor:not-allowed" />
           </div>
 
         </div>
