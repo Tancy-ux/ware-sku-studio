@@ -43,8 +43,9 @@ function initNavLinks() {
   };
   document.querySelectorAll('.nav-links a').forEach(link => {
     link.addEventListener('click', e => {
-      e.preventDefault();
       const section = link.dataset.section;
+      if (!section) return; // external link (e.g. the ware tab) - let it navigate normally
+      e.preventDefault();
       const pageId = navMap[section];
       if (!pageId) return;
       // Update nav active state
