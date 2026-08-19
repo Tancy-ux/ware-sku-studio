@@ -58,16 +58,29 @@ body {
 
 .nav-left { display: flex; align-items: center; gap: 0; }
 
-.nav-tag {
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,0.22);
-  font-weight: 500;
+.brand-switch {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   margin-left: 16px;
   padding-left: 16px;
   border-left: 1px solid rgba(255,255,255,0.1);
 }
+
+.brand-switch-item {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  color: rgba(255,255,255,0.4);
+  transition: all 0.2s;
+}
+
+a.brand-switch-item:hover { color: rgba(255,255,255,0.8); }
+.brand-switch-item.active { background: var(--terracotta); color: var(--white); }
 
 .nav-links {
   display: flex;
