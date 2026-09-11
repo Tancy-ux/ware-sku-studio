@@ -147,11 +147,25 @@ def init_db():
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 
+ZOHO_ENV_KEYS = {
+    'zoho_client_id': 'ZOHO_CLIENT_ID',
+    'zoho_client_secret': 'ZOHO_CLIENT_SECRET',
+    'zoho_refresh_token': 'ZOHO_REFRESH_TOKEN',
+    'zoho_org_id': 'ZOHO_ORG_ID',
+}
+
 def load_config():
     if os.path.exists(CONFIG_PATH):
         with open(CONFIG_PATH) as f:
-            return json.load(f)
-    return {'zoho_client_id': '', 'zoho_client_secret': '', 'zoho_refresh_token': '', 'zoho_org_id': ''}
+            cfg = json.load(f)
+    else:
+        cfg = {'zoho_client_id': '', 'zoho_client_secret': '', 'zoho_refresh_token': '', 'zoho_org_id': ''}
+    # Environment variables win over the file, so credentials survive Render
+    # redeploys/restarts that wipe the (gitignored) config.json on disk.
+    for key, env_key in ZOHO_ENV_KEYS.items():
+        if os.environ.get(env_key):
+            cfg[key] = os.environ[env_key]
+    return cfg
 
 def save_config(data):
     with open(CONFIG_PATH, 'w') as f:
