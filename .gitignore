@@ -1,6 +1,7 @@
 # Local data — never commit real credentials
-# NOTE: data/ware.db IS committed on purpose — Render has no persistent disk,
-# so the live deploy reads its starting data from this file in the repo.
+# NOTE: data/ware.db IS committed on purpose. It is the local database, and the
+# one-time starting data the live deploy copied into Postgres (DATABASE_URL).
+# The live site's data now lives in Postgres, not in this file.
 data/config.json
 data/*_backup_*.db
 

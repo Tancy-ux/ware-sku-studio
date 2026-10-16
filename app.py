@@ -4,7 +4,7 @@ import sqlite3
 import json
 import os
 import requests
-from datetime import datetime
+from datetime import datetime, timezone
 
 app = Flask(__name__)
 CORS(app)
@@ -13,18 +13,101 @@ DB_PATH = os.path.join(os.path.dirname(__file__), 'data', 'ware.db')
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'data', 'config.json')
 
 # ─── DATABASE SETUP ───────────────────────────────────────────────────────────
+# Locally the app uses the SQLite file at data/ware.db.
+# When DATABASE_URL is set (the live Render deploy), it uses that Postgres database
+# instead, so data survives restarts and redeploys. Render's own disk is wiped on
+# every restart, which is why the live site can't rely on the SQLite file.
+
+DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
+USE_PG = DATABASE_URL.startswith(('postgres://', 'postgresql://'))
+
+if USE_PG:
+    import psycopg
+    from psycopg.rows import dict_row
+    from psycopg_pool import ConnectionPool
+    # prepare_threshold=None: no server-side prepared statements, which Neon's pooled endpoint may not keep.
+    _pg_pool = ConnectionPool(DATABASE_URL, min_size=0, max_size=5, open=True,
+                              check=ConnectionPool.check_connection,
+                              kwargs={'row_factory': dict_row, 'prepare_threshold': None})
+    IntegrityError = (sqlite3.IntegrityError, psycopg.IntegrityError)
+else:
+    IntegrityError = sqlite3.IntegrityError
+
+# Auto-increment primary key, written per database.
+PK = 'SERIAL PRIMARY KEY' if USE_PG else 'INTEGER PRIMARY KEY AUTOINCREMENT'
+# UTC 'YYYY-MM-DD HH:MM:SS', the same text format SQLite's CURRENT_TIMESTAMP produces.
+NOW_DEFAULT = ("(to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD HH24:MI:SS'))"
+               if USE_PG else 'CURRENT_TIMESTAMP')
+
+class _PGConn:
+    """Gives a pooled Postgres connection the same small API the routes use on sqlite3
+    (conn.execute with ? placeholders, cursor(), commit(), close())."""
+    def __init__(self):
+        self._conn = _pg_pool.getconn()
+
+    def execute(self, sql, params=()):
+        return self._conn.execute(sql.replace('?', '%s'), params)
+
+    def cursor(self):
+        return self
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        if self._conn is not None:
+            self._conn.rollback()  # discard anything uncommitted (no-op after commit)
+            _pg_pool.putconn(self._conn)
+            self._conn = None
 
 def get_db():
+    if USE_PG:
+        return _PGConn()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
+# Tables copied from the bundled SQLite file into a fresh Postgres database, in this order.
+_MIGRATE_TABLES = ['options', 'components', 'typology_counters', 'category_counters', 'skus', 'assembly_skus']
+
+def _migrate_sqlite_to_pg(conn):
+    """One-time copy of data/ware.db into Postgres, the first time the app starts against it.
+    Guarded by a flag in app_meta so it never runs again, even if tables are later emptied."""
+    conn.execute('CREATE TABLE IF NOT EXISTS app_meta (key TEXT PRIMARY KEY, value TEXT)')
+    if conn.execute("SELECT 1 FROM app_meta WHERE key='migrated_from_sqlite'").fetchone():
+        return
+    if os.path.exists(DB_PATH):
+        src = sqlite3.connect(DB_PATH)
+        src.row_factory = sqlite3.Row
+        existing = {r[0] for r in src.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        for table in _MIGRATE_TABLES:
+            if table not in existing:
+                continue
+            rows = src.execute(f'SELECT * FROM {table}').fetchall()
+            if not rows:
+                continue
+            cols = rows[0].keys()
+            sql = (f'INSERT INTO {table} ({", ".join(cols)}) VALUES ({", ".join(["?"] * len(cols))}) '
+                   'ON CONFLICT DO NOTHING')
+            for r in rows:
+                conn.execute(sql, tuple(r))
+            if 'id' in cols:
+                # Keep new ids climbing past the copied ones.
+                conn.execute(f"SELECT setval(pg_get_serial_sequence('{table}', 'id'), "
+                             f"(SELECT COALESCE(MAX(id), 1) FROM {table}))")
+        src.close()
+    conn.execute("INSERT INTO app_meta (key, value) VALUES ('migrated_from_sqlite', ?)",
+                 (datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),))
+
 def init_db():
     conn = get_db()
     c = conn.cursor()
+    if USE_PG:
+        # Serialise start-up across workers so the one-time migration can't run twice.
+        c.execute('SELECT pg_advisory_xact_lock(724501)')
 
-    c.execute('''CREATE TABLE IF NOT EXISTS skus (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    c.execute(f'''CREATE TABLE IF NOT EXISTS skus (
+        id {PK},
         sku_code TEXT UNIQUE NOT NULL,
         product_name TEXT,
         material_code TEXT,
@@ -37,21 +120,21 @@ def init_db():
         notes TEXT,
         zoho_item_id TEXT,
         zoho_synced INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        created_at TEXT DEFAULT {NOW_DEFAULT}
     )''')
 
-    c.execute('''CREATE TABLE IF NOT EXISTS typology_counters (
+    c.execute(f'''CREATE TABLE IF NOT EXISTS typology_counters (
         typology_code TEXT PRIMARY KEY,
         last_number INTEGER NOT NULL DEFAULT 0
     )''')
 
-    c.execute('''CREATE TABLE IF NOT EXISTS category_counters (
+    c.execute(f'''CREATE TABLE IF NOT EXISTS category_counters (
         category_code TEXT PRIMARY KEY,
         last_number INTEGER NOT NULL DEFAULT 0
     )''')
 
-    c.execute('''CREATE TABLE IF NOT EXISTS assembly_skus (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    c.execute(f'''CREATE TABLE IF NOT EXISTS assembly_skus (
+        id {PK},
         sku_code TEXT UNIQUE NOT NULL,
         product_name TEXT,
         category_code TEXT,
@@ -65,26 +148,30 @@ def init_db():
         notes TEXT,
         zoho_item_id TEXT,
         zoho_synced INTEGER DEFAULT 0,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        created_at TEXT DEFAULT {NOW_DEFAULT}
     )''')
 
-    c.execute('''CREATE TABLE IF NOT EXISTS options (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    c.execute(f'''CREATE TABLE IF NOT EXISTS options (
+        id {PK},
         option_type TEXT NOT NULL,
         code TEXT NOT NULL,
         name TEXT NOT NULL,
         UNIQUE(option_type, code)
     )''')
 
-    c.execute('''CREATE TABLE IF NOT EXISTS components (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    c.execute(f'''CREATE TABLE IF NOT EXISTS components (
+        id {PK},
         sku TEXT NOT NULL UNIQUE,
         description TEXT,
         category TEXT,
         unit TEXT DEFAULT 'unit',
         reel_size REAL DEFAULT 1.0,
-        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        created_at TEXT DEFAULT {NOW_DEFAULT}
     )''')
+
+    if USE_PG:
+        # Bring the existing data across before any defaults are seeded.
+        _migrate_sqlite_to_pg(conn)
 
     # Seed default options
     defaults = {
@@ -119,11 +206,10 @@ def init_db():
 
     for opt_type, items in defaults.items():
         for code, name in items:
-            try:
-                c.execute('INSERT INTO options (option_type, code, name) VALUES (?,?,?)',
-                          (opt_type, code, name))
-            except sqlite3.IntegrityError:
-                pass
+            # Insert only when missing: ON CONFLICT DO NOTHING would still use up an id on every start.
+            c.execute('INSERT INTO options (option_type, code, name) SELECT ?,?,? '
+                      'WHERE NOT EXISTS (SELECT 1 FROM options WHERE option_type=? AND code=?)',
+                      (opt_type, code, name, opt_type, code))
 
     # Seed component library with Eclipse lamp parts (new format: MATERIAL+TYPOLOGY+NUMBER, no color)
     components = [
@@ -136,11 +222,9 @@ def init_db():
         ('CERAE109','Luna 5.5in dessert plate','ceramic','unit',1),
     ]
     for sku, desc, cat, unit, reel in components:
-        try:
-            c.execute('INSERT INTO components (sku, description, category, unit, reel_size) VALUES (?,?,?,?,?)',
-                      (sku, desc, cat, unit, reel))
-        except sqlite3.IntegrityError:
-            pass
+        c.execute('INSERT INTO components (sku, description, category, unit, reel_size) SELECT ?,?,?,?,? '
+                  'WHERE NOT EXISTS (SELECT 1 FROM components WHERE sku=?)',
+                  (sku, desc, cat, unit, reel, sku))
 
     conn.commit()
     conn.close()
@@ -240,7 +324,7 @@ def add_option(option_type):
         conn.commit()
         conn.close()
         return jsonify({'success': True})
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         conn.close()
         return jsonify({'success': False, 'error': 'Code already exists'}), 400
 
@@ -258,8 +342,9 @@ def get_skus():
     search = request.args.get('search', '')
     conn = get_db()
     if search:
+        # LOWER() on both sides: SQLite's LIKE ignores case, Postgres' doesn't.
         rows = conn.execute(
-            '''SELECT * FROM skus WHERE sku_code LIKE ? OR product_name LIKE ?
+            '''SELECT * FROM skus WHERE LOWER(sku_code) LIKE LOWER(?) OR LOWER(product_name) LIKE LOWER(?)
                ORDER BY created_at DESC''',
             (f'%{search}%', f'%{search}%')).fetchall()
     else:
@@ -400,7 +485,7 @@ def save_sku():
                 return jsonify({'success': True, 'sku_code': sku_code, 'product_number': number, 'zoho_error': result})
 
         return jsonify({'success': True, 'sku_code': sku_code, 'product_number': number})
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         conn.close()
         return jsonify({'success': False, 'error': 'SKU already exists'}), 400
 
@@ -487,7 +572,7 @@ def save_assembly():
                 return jsonify({'success': True, 'sku_code': sku_code, 'zoho_error': result})
 
         return jsonify({'success': True, 'sku_code': sku_code})
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         conn.close()
         return jsonify({'success': False, 'error': 'Assembly SKU already exists'}), 400
 
@@ -561,7 +646,7 @@ def add_component():
         conn.commit()
         conn.close()
         return jsonify({'success': True})
-    except sqlite3.IntegrityError:
+    except IntegrityError:
         conn.close()
         return jsonify({'success': False, 'error': 'Component SKU already exists'}), 400
 
@@ -580,7 +665,8 @@ def get_stats():
     total_skus = conn.execute('SELECT COUNT(*) as c FROM skus').fetchone()['c']
     total_assemblies = conn.execute('SELECT COUNT(*) as c FROM assembly_skus').fetchone()['c']
     synced_today = conn.execute(
-        "SELECT COUNT(*) as c FROM skus WHERE zoho_synced=1 AND date(created_at)=date('now')").fetchone()['c']
+        'SELECT COUNT(*) as c FROM skus WHERE zoho_synced=1 AND substr(created_at, 1, 10)=?',
+        (datetime.now(timezone.utc).strftime('%Y-%m-%d'),)).fetchone()['c']
     pending = conn.execute('SELECT COUNT(*) as c FROM skus WHERE zoho_synced=0').fetchone()['c']
     conn.close()
     return jsonify({
@@ -649,11 +735,15 @@ def export_skus():
     return Response(output.getvalue(), mimetype='text/csv',
                     headers={'Content-Disposition': 'attachment;filename=ware-skus.csv'})
 
+# Create tables (and, on Postgres, run the one-time data copy) whenever the app is loaded,
+# whether it's started with `python app.py` or by a server like gunicorn.
+init_db()
+
 if __name__ == '__main__':
-    init_db()
     print('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
     print('  ware SKU Studio is running')
     print('  Open: http://localhost:5050')
     print('  Network: http://0.0.0.0:5050')
     print('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n')
-    app.run(debug=True, host='0.0.0.0', port=5050)
+    # Render sets RENDER=true. Never expose Flask's interactive debugger on the public site.
+    app.run(debug=not os.environ.get('RENDER'), host='0.0.0.0', port=5050)

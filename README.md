@@ -66,8 +66,16 @@ This app uses the Zoho `.in` regional endpoint
 (`https://www.zohoapis.in`). If your Zoho account is in a different region, change
 the domain in `app.py` accordingly (e.g. `.com`, `.eu`, `.com.au`).
 
-`data/config.json` and `data/ware.db` are git-ignored — your credentials and data
-are never committed.
+`data/config.json` is git-ignored, so your credentials are never committed.
+
+## Live deploy (Render) and where data is stored
+
+- **Locally**, data is stored in the SQLite file `data/ware.db`.
+- **On the live site**, set a `DATABASE_URL` environment variable (a Postgres
+  connection string, e.g. from Neon). The app then stores everything in that
+  database, so nothing is lost when Render restarts or redeploys.
+- The first time the app starts against an empty Postgres database, it copies the
+  data from `data/ware.db` across automatically. This happens only once.
 
 ## Project structure
 
