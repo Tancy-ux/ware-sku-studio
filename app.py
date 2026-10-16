@@ -673,7 +673,9 @@ def get_stats():
         'total_skus': total_skus,
         'total_assemblies': total_assemblies,
         'synced_today': synced_today,
-        'pending_sync': pending
+        'pending_sync': pending,
+        # 'postgres' on the live site once DATABASE_URL is set; 'sqlite' means data is NOT persistent there.
+        'storage': 'postgres' if USE_PG else 'sqlite'
     })
 
 # CONFIG / ZOHO SETUP
