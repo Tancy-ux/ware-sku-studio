@@ -433,17 +433,20 @@ def delete_sku(sku_id):
 def get_assemblies():
     search = request.args.get('search', '')
     conn = get_db()
-    if search:
-        rows = conn.execute(
-            'SELECT * FROM assembly_skus WHERE sku_code LIKE ? OR product_name LIKE ? ORDER BY created_at DESC',
-            (f'%{search}%', f'%{search}%')).fetchall()
-    else:
-        rows = conn.execute('SELECT * FROM assembly_skus ORDER BY created_at DESC').fetchall()
+    rows = conn.execute('SELECT * FROM assembly_skus ORDER BY created_at DESC').fetchall()
     conn.close()
+    term = search.strip().lower()
     result = []
     for r in rows:
         d = dict(r)
         d['bom'] = json.loads(d['bom']) if d['bom'] else []
+        # Match the assembly's own code/name, or any component's SKU/description.
+        if term and not (
+            term in (d['sku_code'] or '').lower()
+            or term in (d['product_name'] or '').lower()
+            or any(term in str(c.get('sku', '')).lower() or term in str(c.get('desc', '')).lower()
+                   for c in d['bom'])):
+            continue
         result.append(d)
     return jsonify(result)
 
@@ -487,6 +490,49 @@ def save_assembly():
     except sqlite3.IntegrityError:
         conn.close()
         return jsonify({'success': False, 'error': 'Assembly SKU already exists'}), 400
+
+def _clean_bom(items):
+    """Validate a BOM list from the client. Returns (clean_list, error)."""
+    if not isinstance(items, list):
+        return None, 'BOM must be a list'
+    clean = []
+    for c in items:
+        if not isinstance(c, dict):
+            return None, 'Invalid component'
+        sku = str(c.get('sku', '')).strip().upper()
+        try:
+            qty = float(c.get('qty', 0))
+        except (TypeError, ValueError):
+            qty = 0
+        if not sku or qty <= 0:
+            return None, f'Component {sku or "(blank)"} needs a SKU and a qty above 0'
+        clean.append({'sku': sku, 'desc': str(c.get('desc') or sku).strip(),
+                      'qty': int(qty) if qty.is_integer() else qty,
+                      'unit': c.get('unit') or 'unit'})
+    return clean, None
+
+@app.route('/api/assemblies/<int:asm_id>/bom', methods=['PUT'])
+def update_assembly_bom(asm_id):
+    # Edits the stored BOM only. The SKU code and any Zoho composite item are left untouched.
+    data = request.get_json(silent=True) or {}
+    bom, err = _clean_bom(data.get('bom'))
+    if err:
+        return jsonify({'success': False, 'error': err}), 400
+    conn = get_db()
+    row = conn.execute('SELECT bom FROM assembly_skus WHERE id=?', (asm_id,)).fetchone()
+    if not row:
+        conn.close()
+        return jsonify({'success': False, 'error': 'Assembly not found'}), 404
+    # Refuse to overwrite if the BOM changed since the editor was opened (another tab/person saved first).
+    current = json.loads(row['bom']) if row['bom'] else []
+    if 'original_bom' in data and data['original_bom'] != current:
+        conn.close()
+        return jsonify({'success': False, 'conflict': True,
+                        'error': 'This assembly was changed elsewhere since you opened it. Your edits were not saved.'}), 409
+    conn.execute('UPDATE assembly_skus SET bom=? WHERE id=?', (json.dumps(bom), asm_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True, 'bom': bom})
 
 @app.route('/api/assemblies/<int:asm_id>', methods=['DELETE'])
 def delete_assembly(asm_id):

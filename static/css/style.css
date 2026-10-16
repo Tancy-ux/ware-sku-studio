@@ -667,6 +667,74 @@ a.brand-switch-item:hover { color: rgba(255,255,255,0.9); background: rgba(255,2
   font-weight: 500;
 }
 
+/* Collapsible archive cards */
+.asm-card { padding: 14px 24px; }
+.asm-card.open { padding: 20px 24px; }
+.asm-card:not(.open) .asm-card-header { margin-bottom: 0; }
+.asm-toggle { cursor: pointer; user-select: none; }
+.asm-chevron {
+  display: inline-block; width: 14px; margin-right: 8px;
+  font-size: 14px; color: var(--terracotta); transition: transform 0.15s;
+}
+.asm-card.open .asm-chevron { transform: rotate(90deg); }
+.asm-count { font-size: 10px; letter-spacing: 0.08em; color: var(--grey); text-transform: uppercase; }
+
+/* Inline BOM editor on archive cards */
+.asm-edit input, .asm-edit select {
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  background: var(--cream);
+  font-family: 'Montserrat', sans-serif;
+  font-size: 11px;
+  color: var(--black);
+  border-radius: 2px;
+  outline: none;
+}
+.asm-edit input:focus, .asm-edit select:focus {
+  border-color: var(--terracotta);
+  background: var(--white);
+}
+
+.asm-card-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11px; color: var(--grey); margin: 4px 0 12px;
+}
+.asm-edit-add {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border);
+}
+.bom-table tr.bom-hit td { background: var(--cream-mid); }
+.asm-toggle:focus-visible { outline: 2px solid var(--terracotta); outline-offset: 4px; }
+
+.icon-btn {
+  width: 32px; height: 32px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid var(--border); border-radius: 2px;
+  color: var(--grey); cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+.icon-btn:hover { color: var(--terracotta); border-color: var(--terracotta); background: var(--white); }
+.icon-btn.danger:hover { color: #BF3535; border-color: #f0a0a0; background: #FCEBEB; }
+.icon-btn:focus-visible { outline: 2px solid var(--terracotta); outline-offset: 2px; }
+
+/* ── CONFIRM MODAL ── */
+.modal-backdrop {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.modal {
+  background: var(--white); border-radius: 3px; padding: 24px 26px;
+  width: 100%; max-width: 420px; box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+}
+.modal-title { font-size: 15px; font-weight: 600; margin-bottom: 10px; color: var(--black); }
+.modal-body { font-size: 12px; line-height: 1.6; color: var(--grey); }
+.modal-body b { color: var(--black); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+.btn-danger-solid { background: #A32D2D; color: #fff; border-color: #A32D2D; }
+.btn-danger-solid:hover { background: #8a2323; }
+
 .bom-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 
 .bom-chip {
